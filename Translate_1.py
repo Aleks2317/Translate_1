@@ -16,6 +16,7 @@ def translate():
         if comboTwo.get() == suffix:
             text = t_input.get('1.0', 'end')
             translation = translator.translate(text, dest=suffix)  # принимает текст и суффикс языка
+            print(f'{comboTwo.get() = }\n{t_input.get("1.0", "end") = }\n{translation.text = }')
             t_output.delete('1.0', 'end')
             t_output.insert('0.0', translation.text)
 
@@ -88,7 +89,6 @@ t_input.grid(row=0, column=0, pady=5, padx=5)
 # 11 создание второго текстового поля для отображения перевода
 t_output = customtkinter.CTkTextbox(translate_frame,
                                     font=('Caveat', 15),
-                                    state="disabled",
                                     width=245
                                     )
 t_output.grid(row=0, column=1, pady=5, padx=5)
