@@ -1,24 +1,69 @@
+import tkinter as tk
 import customtkinter
 import sqlite3
-import datetime
+from datetime import date
 from googletrans import Translator
+
+
+def db_start():
+    """ Метод для создания таблицы 'translate_list' со столбцами:
+     id - id с автоматическим добавлением ключа;
+     text - вводимый текст для перевода;
+     translation - переведенный текст;
+     date_now - дата запроса на перевод (автоматически устанавливается)
+     """
+    global conn, cur
+    conn = sqlite3.connect('translate_list.db')  # 17 подключение к db с помощью connect
+    cur = conn.cursor()  # 18 создание объекта курсора
+    # 19 запрос создание таблицы только в том случае если в db ее нет
+    cur.execute("""CREATE TABLE IF NOT EXISTS translate_list (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT,
+    translation TEXT,
+    date_now TEXT)""")
 
 
 def delete_translate():
     """Функция для удаления переведенных запросов"""
-    pass
+    index = list_translate_display.curselection()
+    print(f"{index = }")
+
+
+def list_translates_display():
+    """ Метода для выборки данных из таблиуы 'translation' и отображения в  """
+    list_translate_display.delete('1.0', 'end')
+    cur.execute("SELECT id, text, translation, date_now FROM translate_list")
+
+    title = cur.fetchall()
+    for i, t, tr, d in [titl for titl in reversed(title)]:
+        list_translate_display.insert(customtkinter.END, f'{"*" * 10} id = {i}. {"Ввод"}{"*" * 10}\n\n'
+                                                         f'{t.strip()}\n\n'
+                                                         f'{"*" * 10}{"Перевод"}{"*" * 10}\n\n'
+                                                         f'{tr.strip()}\n\n'
+                                                         f'{"_" * 10}{"Дата: "}{d}{"_" * 10}\n\n')
 
 
 # 13 создадим функцию для перевода
 def translate():
     """Функция для перевода"""
     for launguage, suffix in languages.items():
+        print(comboTwo.get())
         if comboTwo.get() == suffix:
+            date_now = str(date.today())
             text = t_input.get('1.0', 'end')
             translation = translator.translate(text, dest=suffix)  # принимает текст и суффикс языка
-            print(f'{comboTwo.get() = }\n{t_input.get("1.0", "end") = }\n{translation.text = }')
+            print(f'{comboTwo.get() = }'
+                  f'\n{text = }'
+                  f'\n{date_now = }'
+                  f'\n{translation.text = }')
             t_output.delete('1.0', 'end')
             t_output.insert('0.0', translation.text)
+            cur.execute("INSERT INTO translate_list (text, translation, date_now) VALUES (?,?,?)",
+                        (text, translation.text.rstrip(), date_now))
+            conn.commit()
+            list_translates_display()
+
+
 
 
 # 1 окно
@@ -44,7 +89,7 @@ header_frame.grid_columnconfigure(2, weight=1)
 # 5 создание виджета comboOne для отображения языков первого значения
 comboOne = customtkinter.CTkComboBox(header_frame,
                                      font=('Caveat', 20),
-                                     values=[lang for lang in languages],
+                                     values=[lang for lang in languages.values()],
                                      state='readonly',
                                      width=165
                                      )  # state=readonly запрещает изменять размеры в виджите
@@ -57,14 +102,14 @@ btn = customtkinter.CTkButton(header_frame,
                               font=('Caveat', 20),
                               fg_color='green',
                               command=translate,
-                              width=165
+                              width=165,
                               )
 btn.grid(row=0, column=1, pady=5, padx=5)
 
 # 7 создание виджета comboOne для отображения языков второго значения
 comboTwo = customtkinter.CTkComboBox(header_frame,
                                      font=('Caveat', 20),
-                                     values=[lang for lang in languages],
+                                     values=[lang for lang in languages.values()],
                                      state='readonly',
                                      width=165
                                      )  # state=readonly запрещает изменять размеры в виджите
@@ -99,13 +144,13 @@ db_frame = customtkinter.CTkFrame(app, )
 db_frame.pack()
 
 # 12 текстовое поле для отображения последних переводов только для чтения
-list_translate = customtkinter.CTkTextbox(db_frame,
-                                          font=('Caveat', 13),
-                                          width=490,
-                                          height=70,
-                                          state="disabled"
-                                          )
-list_translate.grid(row=0, column=0, padx=5, pady=5)
+list_translate_display = customtkinter.CTkTextbox(db_frame,
+                                                  font=('Caveat', 15),
+                                                  width=490,
+                                                  height=130,
+                                                  activate_scrollbars=True,  # активация прокрутки
+                                                  )
+list_translate_display.grid(row=0, column=0, padx=5, pady=5)
 
 db_del_frame = customtkinter.CTkFrame(app, )
 db_del_frame.pack()
@@ -116,8 +161,8 @@ db_del_frame.grid_columnconfigure(1, weight=1)
 
 del_label = customtkinter.CTkLabel(db_del_frame,
                                    font=('Caveat', 15),
-                                   width=425)
-del_label.grid(column=0, pady=5)
+                                   width=350)
+del_label.grid(row=0, column=1, pady=5)
 
 del_btn = customtkinter.CTkButton(db_del_frame,
                                   text='Удалить',
@@ -125,6 +170,9 @@ del_btn = customtkinter.CTkButton(db_del_frame,
                                   fg_color='green',
                                   command=delete_translate
                                   )
-del_btn.grid(column=1, pady=5)
+del_btn.grid(row=0, column=0, pady=1)
 
+db_start()
+list_translates_display()
 app.mainloop()
+conn.close()
